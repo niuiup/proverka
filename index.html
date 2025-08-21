@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест микрофона</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        .container {
+            text-align: center;
+            padding: 30px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 { margin-top: 0; }
+        #status { 
+            font-size: 1.1em; 
+            font-weight: 500;
+            min-height: 24px;
+            margin: 20px 0;
+        }
+        .status-success { color: #2ecc71; }
+        .status-error { color: #e74c3c; }
+        
+        /* Стили для индикатора громкости */
+        .volume-meter {
+            width: 300px;
+            height: 50px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            background-color: #e9ecef;
+        }
+        #volume-level {
+            height: 100%;
+            width: 0%; /* Начинаем с нуля */
+            background-color: #2ecc71;
+            transition: width 0.1s linear; /* Плавное движение */
+            border-radius: 6px;
+        }
+        
+        button {
+            font-size: 1.2em;
+            padding: 12px 25px;
+            margin-top: 20px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            background-color: #3498db;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Тест микрофона</h1>
+        <p>Нажмите кнопку ниже, чтобы проверить доступ к микрофону и уровень громкости.</p>
+        
+        <p id="status">Ожидание проверки...</p>
+
+        <div class="volume-meter">
+            <div id="volume-level"></div>
+        </div>
+        
+        <button id="checkMicBtn">Проверить микрофон</button>
+    </div>
+
+    <script>
+        const checkMicBtn = document.getElementById('checkMicBtn');
+        const statusEl = document.getElementById('status');
+        const volumeLevelEl = document.getElementById('volume-level');
+        
+        // Переменная для хранения контекста и анализатора, чтобы избежать повторного создания
+        let audioContext;
+        let analyser;
+        let microphone;
+        let javascriptNode;
+
+        async function startMicCheck() {
+            // Проверяем, есть ли уже активный поток, и останавливаем его
+            if (window.stream) {
+                window.stream.getTracks().forEach(track => track.stop());
+            }
+
+            try {
+                // 1. Запрашиваем доступ к микрофону
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                window.stream = stream; // Сохраняем поток, чтобы можно было его остановить
+                
+                statusEl.textContent = '✓ Доступ к микрофону получен!';
+                statusEl.className = 'status-success';
+                
+                // 2. Создаем "слушателя" (AudioContext)
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // 3. Создаем анализатор для измерения громкости
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256; // Размер выборки, влияет на точность
+                
+                // 4. Подключаем реальный микрофон к анализатору
+                microphone = audioContext.createMediaStreamSource(stream);
+                microphone.connect(analyser);
+
+                // 5. Начинаем "рисовать" уровень громкости
+                drawVolume();
+
+            } catch (err) {
+                console.error("Ошибка доступа к микрофону:", err);
+                statusEl.textContent = 'Ошибка: Не удалось получить доступ к микрофону. Проверьте разрешения.';
+                statusEl.className = 'status-error';
+            }
+        }
+
+        function drawVolume() {
+            // Создаем массив для хранения данных о громкости
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            
+            function update() {
+                // Запрашиваем следующий кадр анимации для плавности
+                requestAnimationFrame(update);
+                
+                // Получаем данные о громкости в текущий момент
+                analyser.getByteFrequencyData(dataArray);
+                
+                // Считаем среднее значение громкости
+                let sum = 0;
+                for (const value of dataArray) {
+                    sum += value;
+                }
+                const average = sum / dataArray.length;
+                
+                // Преобразуем среднее значение в проценты для шкалы (с небольшим усилением для наглядности)
+                const volumePercent = Math.min(100, average * 1.5); 
+                
+                // Обновляем ширину зеленой полоски
+                volumeLevelEl.style.width = volumePercent + '%';
+            }
+            
+            update();
+        }
+
+        checkMicBtn.addEventListener('click', startMicCheck);
+    </script>
+</body>
+</html>
