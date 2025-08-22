@@ -3,155 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тест микрофона</title>
+    <title>Тест Микрофона и Распознавания</title>
     <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f2f5;
-        }
-        .container {
-            text-align: center;
-            padding: 30px;
-            background-color: #fff;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f2f5; }
+        .container { text-align: center; padding: 30px; background-color: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 400px;}
         h1 { margin-top: 0; }
-        #status { 
-            font-size: 1.1em; 
-            font-weight: 500;
-            min-height: 24px;
-            margin: 20px 0;
-        }
+        #status { font-size: 1.1em; font-weight: 500; min-height: 24px; margin: 20px 0; }
         .status-success { color: #2ecc71; }
         .status-error { color: #e74c3c; }
-        
-        /* Стили для индикатора громкости */
-        .volume-meter {
-            width: 300px;
-            height: 50px;
-            border: 2px solid #ccc;
-            border-radius: 8px;
-            position: relative;
-            overflow: hidden;
-            background-color: #e9ecef;
-        }
-        #volume-level {
-            height: 100%;
-            width: 0%; /* Начинаем с нуля */
-            background-color: #2ecc71;
-            transition: width 0.1s linear; /* Плавное движение */
-            border-radius: 6px;
-        }
-        
-        button {
-            font-size: 1.2em;
-            padding: 12px 25px;
-            margin-top: 20px;
-            cursor: pointer;
-            border: none;
-            border-radius: 8px;
-            color: white;
-            background-color: #3498db;
-        }
+        .volume-meter { width: 100%; height: 50px; border: 2px solid #ccc; border-radius: 8px; position: relative; overflow: hidden; background-color: #e9ecef; }
+        #volume-level { height: 100%; width: 0%; background-color: #2ecc71; transition: width 0.1s linear; border-radius: 6px; }
+        button { font-size: 1.1em; padding: 12px 25px; margin-top: 20px; cursor: pointer; border: none; border-radius: 8px; color: white; background-color: #3498db; width: 100%; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        #log { border: 1px solid #ccc; padding: 10px; margin-top: 20px; max-height: 150px; overflow-y: auto; text-align: left; font-family: monospace; font-size: 0.9em; white-space: pre-wrap; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>Тест микрофона</h1>
-        <p>Нажмите кнопку ниже, чтобы проверить доступ к микрофону и уровень громкости.</p>
+        <h1>Полный тест аудио</h1>
+        <p id="instruction">1. Нажмите кнопку ниже, чтобы проверить микрофон.</p>
         
         <p id="status">Ожидание проверки...</p>
-
-        <div class="volume-meter">
-            <div id="volume-level"></div>
-        </div>
+        <div class="volume-meter"><div id="volume-level"></div></div>
         
-        <button id="checkMicBtn">Проверить микрофон</button>
+        <button id="checkMicBtn">1. Проверить микрофон</button>
+        <button id="startRecognitionBtn" disabled style="display: none; background-color: #8e44ad;">2. Начать распознавание</button>
+
+        <h3>Лог распознавания:</h3>
+        <div id="log"></div>
     </div>
 
     <script>
         const checkMicBtn = document.getElementById('checkMicBtn');
+        const startRecognitionBtn = document.getElementById('startRecognitionBtn');
         const statusEl = document.getElementById('status');
+        const instructionEl = document.getElementById('instruction');
         const volumeLevelEl = document.getElementById('volume-level');
+        const logDiv = document.getElementById('log');
+
+        let audioStream; // Сохраняем поток для последующего использования
+
+        function log(message) {
+            const time = new Date().toLocaleTimeString();
+            logDiv.innerHTML = `[${time}] ${message}\n` + logDiv.innerHTML; // Добавляем в начало
+        }
         
-        // Переменная для хранения контекста и анализатора, чтобы избежать повторного создания
-        let audioContext;
-        let analyser;
-        let microphone;
-        let javascriptNode;
-
+        // --- Шаг 1: Проверка микрофона и индикатор громкости ---
         async function startMicCheck() {
-            // Проверяем, есть ли уже активный поток, и останавливаем его
-            if (window.stream) {
-                window.stream.getTracks().forEach(track => track.stop());
-            }
-
             try {
-                // 1. Запрашиваем доступ к микрофону
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                window.stream = stream; // Сохраняем поток, чтобы можно было его остановить
-                
-                statusEl.textContent = '✓ Доступ к микрофону получен!';
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                statusEl.textContent = '✓ Микрофон активен. Говорите!';
                 statusEl.className = 'status-success';
                 
-                // 2. Создаем "слушателя" (AudioContext)
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // 3. Создаем анализатор для измерения громкости
-                analyser = audioContext.createAnalyser();
-                analyser.fftSize = 256; // Размер выборки, влияет на точность
-                
-                // 4. Подключаем реальный микрофон к анализатору
-                microphone = audioContext.createMediaStreamSource(stream);
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const analyser = audioContext.createAnalyser();
+                const microphone = audioContext.createMediaStreamSource(audioStream);
                 microphone.connect(analyser);
 
-                // 5. Начинаем "рисовать" уровень громкости
+                function drawVolume() {
+                    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    analyser.getByteFrequencyData(dataArray);
+                    let sum = 0;
+                    dataArray.forEach(value => sum += value);
+                    const average = sum / dataArray.length;
+                    volumeLevelEl.style.width = Math.min(100, average * 1.5) + '%';
+                    requestAnimationFrame(drawVolume);
+                }
                 drawVolume();
 
+                // Показываем кнопку для следующего шага
+                checkMicBtn.disabled = true;
+                startRecognitionBtn.style.display = 'block';
+                startRecognitionBtn.disabled = false;
+                instructionEl.textContent = "2. Теперь нажмите кнопку ниже и скажите 'Да' или 'Нет'.";
+
             } catch (err) {
-                console.error("Ошибка доступа к микрофону:", err);
-                statusEl.textContent = 'Ошибка: Не удалось получить доступ к микрофону. Проверьте разрешения.';
+                statusEl.textContent = 'Ошибка доступа к микрофону. Проверьте разрешения.';
                 statusEl.className = 'status-error';
             }
         }
 
-        function drawVolume() {
-            // Создаем массив для хранения данных о громкости
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        // --- Шаг 2: Тест распознавания речи ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+            log("Критическая ошибка: SpeechRecognition API не поддерживается.");
+        } else {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'ru-RU';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onstart = () => log("Статус: Слушаю...");
+            recognition.onend = () => log("Статус: Распознавание завершено.");
+            recognition.onerror = (e) => log(`Ошибка: ${e.error}`);
+            recognition.onnomatch = () => log("Результат: Ничего не распознано.");
             
-            function update() {
-                // Запрашиваем следующий кадр анимации для плавности
-                requestAnimationFrame(update);
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript.toLowerCase();
+                log(`Результат: Распознано "${transcript}"`);
                 
-                // Получаем данные о громкости в текущий момент
-                analyser.getByteFrequencyData(dataArray);
-                
-                // Считаем среднее значение громкости
-                let sum = 0;
-                for (const value of dataArray) {
-                    sum += value;
+                if (transcript.includes('да')) {
+                    log("Оценка: Ответ 'Да' засчитан.");
+                } else if (transcript.includes('нет')) {
+                    log("Оценка: Ответ 'Нет' засчитан.");
+                } else {
+                    log("Оценка: Ответ не является 'Да' или 'Нет'.");
                 }
-                const average = sum / dataArray.length;
-                
-                // Преобразуем среднее значение в проценты для шкалы (с небольшим усилением для наглядности)
-                const volumePercent = Math.min(100, average * 1.5); 
-                
-                // Обновляем ширину зеленой полоски
-                volumeLevelEl.style.width = volumePercent + '%';
-            }
+            };
             
-            update();
+            startRecognitionBtn.addEventListener('click', () => {
+                log("--- Новый тест ---");
+                try {
+                    recognition.start();
+                } catch (e) {
+                    log(`Критическая ошибка при запуске: ${e}`);
+                }
+            });
         }
 
         checkMicBtn.addEventListener('click', startMicCheck);
+
     </script>
 </body>
 </html>
