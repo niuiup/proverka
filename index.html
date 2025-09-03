@@ -1,344 +1,230 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Конструктор и проведение видео-скрининга</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); --container-bg: rgba(255, 255, 255, 0.9); --primary-text: #2c3e50; --secondary-text: #5f6c7b; --border-color: #dfe7f0; --accent-blue: #3498db; --accent-green: #2ecc71; --accent-red: #e74c3c; --accent-purple: #8e44ad;
-        }
-        body { font-family: 'Inter', sans-serif; background: var(--bg-gradient); color: var(--primary-text); margin: 0; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box; }
-        .screen { width: 100%; max-width: 1200px; background-color: var(--container-bg); border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); padding: 40px; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.5); backdrop-filter: blur(10px); display: none; animation: fadeIn 0.5s ease-out; }
-        .screen.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        h1, h2, h3 { text-align: center; color: var(--primary-text); margin-top: 0; }
-        .info-screen-content { max-width: 800px; margin: 0 auto; text-align: center; }
-        .info-screen-content ul { list-style-type: none; padding-left: 0; text-align: left; } .info-screen-content li::before { content: '✓'; color: var(--accent-green); font-weight: bold; margin-right: 10px; }
-        
-        button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; font-size: 1.05em; font-weight: 500; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s ease-in-out; color: white; border-bottom: 3px solid rgba(0,0,0,0.15); }
-        button svg { width: 20px; height: 20px; }
-        button:disabled { background-color: #bdc3c7 !important; background-image: none !important; border-bottom-color: #95a5a6; cursor: not-allowed; opacity: 0.7; }
-        button:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); filter: brightness(1.05); }
-        button:active:not(:disabled) { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.1); filter: brightness(0.95); }
-
-        #agreeAndSetupBtn, #finalizeSetupBtn { background-image: linear-gradient(to top, #8e44ad, #9b59b6); border-bottom-color: #6c3483; }
-        #startBtn, #checkDeviceBtn { background-image: linear-gradient(to top, #27ae60, #2ecc71); border-bottom-color: #1e8449; }
-        #restartBtn { background-image: linear-gradient(to top, #2980b9, #3498db); border-bottom-color: #1f618d; }
-        #addQuestionBtn { background-image: linear-gradient(to top, #2980b9, #3498db); border-bottom-color: #1f618d; }
-        #recordBtn { background-color: var(--accent-green); border-bottom-color: #1e8449; }
-        #recordBtn.recording { background-color: var(--accent-red); border-bottom-color: #c0392b; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } }
-        #saveBtn { background-color: #16a085; border-bottom-color: #117a65; }
-        #deviceCheckStatus { font-weight: 500; min-height: 24px; margin-top: 20px; }
-        .status-success { color: var(--accent-green); } .status-error { color: var(--accent-red); }
-        
-        .constructor-layout { display: flex; gap: 30px; } .constructor-form { flex-basis: 50%; } .constructor-preview { flex-basis: 50%; } .form-group { margin-bottom: 20px; text-align: left; } .form-group label { font-weight: 500; display: block; margin-bottom: 8px; } .form-group input[type="text"], .form-group input[type="number"] { width: 100%; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); box-sizing: border-box; font-size: 1em; }
-        .radio-group { display: flex; gap: 15px; }
-        #questionListConstructor { list-style-type: none; padding: 0; } .constructor-item { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 6px; margin-bottom: 8px; } .constructor-item .correct-answer { font-size: 0.8em; color: var(--secondary-text); margin-left: 10px; } .remove-question-btn { background-color: var(--accent-red); padding: 5px 10px; font-size: 0.8em; }
-        .main-layout { display: flex; gap: 25px; } .column { display: flex; flex-direction: column; } .left-column { flex-basis: 30%; } .center-column { flex-basis: 40%; align-items: center; } .right-column { flex-basis: 30%; } .video-container { position: relative; width: 100%; background: #000; border-radius: 8px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); } #videoPreview { display: block; width: 100%; transform: scaleX(-1); } #status { text-align: center; font-weight: 500; min-height: 20px; color: var(--secondary-text); width: 100%; } .question-box { background-color: rgba(238, 242, 247, 0.7); border-left: 5px solid var(--accent-blue); padding: 20px; margin: 0 0 20px 0; border-radius: 8px; flex-grow: 1; } #question { font-size: 1.3em; font-weight: 500; } .controls { display: flex; flex-direction: column; gap: 10px; } .results-container { background-color: rgba(248, 249, 250, 0.7); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; height: 350px; overflow-y: auto; } #resultsList { list-style-type: none; padding: 0; margin: 0; } .result-item { background: var(--container-bg); border-radius: 8px; padding: 15px; margin-bottom: 10px; border: 1px solid #e0e5ec; } .result-item p { margin: 5px 0; } .evaluation-correct { color: var(--accent-green); font-weight: bold; } .evaluation-incorrect { color: var(--accent-red); font-weight: bold; } #historySection { width: 100%; max-width: 1200px; margin-top: 30px; } .history-table { width: 100%; border-collapse: collapse; background: var(--container-bg); border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); } .history-table th, .history-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); } .history-table th { background-color: rgba(238, 242, 247, 0.7); font-weight: 700; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тест микрофона и Распознавание речи</title>
+<style>
+    body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f0f2f5; }
+    .container { text-align: center; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 500px; }
+    h1 { margin: 0; }
+    #status { margin: 15px 0; font-weight: bold; }
+    .status-success { color: #2ecc71; }
+    .status-error { color: #e74c3c; }
+    .status-warning { color: #f39c12; }
+    .volume-meter { width: 100%; max-width: 300px; height: 30px; border: 1px solid #ccc; border-radius: 8px; overflow: hidden; margin: 15px auto; background: #e9ecef; }
+    #volume-level { height: 100%; width: 0%; background: #2ecc71; transition: width 0.1s linear; }
+    .recognition-output { margin-top: 20px; }
+    #recognition-result { font-size: 2em; font-weight: bold; color: #34495e; min-height: 1.2em; } /* Добавлена минимальная высота для стабильности */
+    button { margin-top: 20px; padding: 12px 25px; font-size: 1.1em; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    button.stop-btn { background: #e74c3c; }
+    .info-box { font-size: 0.9em; margin-top: 15px; background: #f7f7f7; padding: 10px; border-radius: 8px; text-align: left; }
+    .download-link { display: block; margin-top: 10px; color: #2980b9; font-weight: bold; }
+</style>
 </head>
 <body>
+<div class="container">
+    <h1>Тест микрофона и речи</h1>
+    <p>Скажите "Да" или "Нет". Если распознавание не сработает — будет fallback запись.</p>
+    <p id="status">Ожидание проверки...</p>
+    <div class="volume-meter"><div id="volume-level"></div></div>
+    <div class="recognition-output"><p id="recognition-result"></p></div>
+    <button id="checkMicBtn">Проверить микрофон</button>
+    <div class="info-box" id="supportInfo"></div>
+    <a id="downloadLink" class="download-link" style="display:none;">Скачать запись (WAV)</a>
+</div>
 
-    <!-- ЭКРАН 1: ИНСТРУКЦИЯ -->
-    <div id="instructionsScreen" class="screen active">
-        <div class="info-screen-content">
-            <h1>Добро пожаловать в систему видео-скрининга!</h1>
-            <h3>Как использовать</h3><ul><li>Введите ваш вопрос в поле "Текст вопроса".</li><li>Выберите тип ответа: "Да" или "Нет".</li><li>Добавляйте или удаляйте вопросы по необходимости.</li><li>В разделе "Критерии завершения" настройте критерии успешного прохождения теста.</li><li>Для работы в конструкторе необходимо дать разрешение на использование камеры и микрофона, прочитать вопрос и нажать кнопку "Записать ответ", ответить "Да" либо "Нет".</li></ul>
-            <h3>Возможности конструктора</h3><ul><li>Автоматический поиск подходящих кандидатов на вакансии.</li><li>Запись видео и аудио всех тестов или только успешных, в соответствии с законодательством (152-ФЗ), с биометрией и идентификацией или без.</li><li>Автоматическое заполнение данных в системах управления отношениями с клиентами (CRM), AmoCRM, Битрикс24 и другие.</li><li>Мгновенное уведомление работодателей о кандидатах, успешно прошедших тесты.</li></ul><br>
-            <button id="agreeAndSetupBtn">Понятно, перейти к созданию теста</button>
-        </div>
-    </div>
+<script>
+const checkMicBtn = document.getElementById('checkMicBtn');
+const statusEl = document.getElementById('status');
+const volumeLevelEl = document.getElementById('volume-level');
+const recognitionResultEl = document.getElementById('recognition-result');
+const supportInfo = document.getElementById('supportInfo');
+const downloadLink = document.getElementById('downloadLink');
 
-    <!-- ЭКРАН 2: КОНСТРУКТОР ТЕСТА -->
-    <div id="constructorScreen" class="screen">
-        <h1>Конструктор теста</h1>
-        <div class="constructor-layout">
-            <div class="constructor-form">
-                <h3>1. Добавьте вопрос</h3>
-                <div class="form-group"><label for="questionInput">Введите свой вопрос</label><input type="text" id="questionInput" placeholder="Например: У вас есть опыт работы с Git?"></div>
-                <div class="form-group"><label>Выберите правильный ответ для этого вопроса</label><div class="radio-group"><label><input type="radio" name="correctAnswer" value="да" checked> Да</label><label><input type="radio" name="correctAnswer" value="нет"> Нет</label></div></div>
-                <button id="addQuestionBtn">Добавить вопрос в список</button>
-                <h3 style="margin-top: 30px;">2. Настройте критерии</h3>
-                <div class="form-group"><label for="thresholdInput">Укажите, сколько правильных ответов нужно для прохождения</label><input type="number" id="thresholdInput" value="1" min="1"></div>
-                <div class="form-group"><label>Укажите, когда сохранять запись</label><div class="radio-group"><label><input type="radio" name="saveCondition" value="successful" checked> Только успешные</label><label><input type="radio" name="saveCondition" value="all"> Всегда (успешные и неуспешные)</label></div></div>
-                <button id="finalizeSetupBtn">Создать тест и передать кандидату</button>
-            </div>
-            <div class="constructor-preview">
-                <h3>Список вопросов</h3>
-                <div class="results-container"><ul id="questionListConstructor"></ul></div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- ЭКРАН 3: НАЧАЛО ИНТЕРВЬЮ (ДЛЯ КАНДИДАТА) -->
-    <div id="startInterviewScreen" class="screen">
-        <div class="info-screen-content">
-            <h2>Инструкция для кандидата</h2>
-            <p>Вам будет предложено несколько вопросов. После прочтения вопроса нажмите кнопку "Записать ответ" и четко произнесите "Да" или "Нет".</p>
-            <p style="font-weight: bold;">Нажимая кнопки ниже, вы даете согласие на запись вашего видео и аудио для оценки.</p><br>
-            <div class="controls" style="flex-direction: column; align-items: center; gap: 20px;">
-                <button id="checkDeviceBtn">Проверить камеру и микрофон</button>
-                <p id="deviceCheckStatus"></p>
-                <button id="startBtn" style="display: none;">Начать интервью</button>
-            </div>
-        </div>
-    </div>
+let audioContext, analyser, microphone, animationFrameId;
+let isListening = false;
+let mediaRecorder, audioChunks = [];
 
-    <!-- ЭКРАН 4: ИНТЕРВЬЮ -->
-    <div id="interviewScreen" class="screen">
-        <div class="main-layout">
-            <div class="column left-column"><h2>Результаты</h2><div class="results-container"><ul id="resultsList"></ul></div></div>
-            <div class="column center-column"><div class="video-container"><video id="videoPreview" muted autoplay playsinline></video></div><p id="status"></p></div>
-            <div class="column right-column"><h2>Текущий вопрос</h2><div class="question-box"><p id="question"></p></div>
-                <div class="controls"><button id="recordBtn" disabled>Записать ответ</button></div>
-            </div>
-        </div>
-    </div>
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition;
+const userAgent = navigator.userAgent;
 
-    <!-- ЭКРАН 5: РЕЗУЛЬТАТЫ -->
-    <div id="resultsScreen" class="screen">
-        <div class="info-screen-content">
-            <h2 id="resultTitle"></h2>
-            <p id="resultText" style="font-size: 1.2em; margin-bottom: 30px;"></p>
-            <div class="controls" style="flex-direction: row; justify-content: center;">
-                <button id="saveBtn" style="display: none;">Сохранить запись</button>
-                <button id="restartBtn">Начать заново</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Секция Истории -->
-    <div id="historySection">
-        <h2>История прохождений</h2>
-        <table class="history-table">
-            <thead><tr><th>Дата и время</th><th>Результат</th><th>Счет</th></tr></thead>
-            <tbody id="historyTableBody"></tbody>
-        </table>
-    </div>
+// Показываем инфо о поддержке
+if (SpeechRecognition) {
+    supportInfo.innerHTML = `✅ Web Speech API доступен.<br>UA: ${userAgent}`;
+    recognition = new SpeechRecognition();
+    recognition.lang = 'ru-RU';
+    recognition.continuous = true; // Важно для постоянного прослушивания
+    recognition.interimResults = false;
 
-    <script>
-        // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И ИНИЦИАЛИЗАЦИЯ ---
-        const screens = document.querySelectorAll('.screen');
-        let testQuestions = [];
-        let passingThreshold = 1;
-        let saveCondition = 'successful';
-        let interviewHistory = [];
-        let finalVideoBlob = null;
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-        function showScreen(screenId) { screens.forEach(screen => screen.classList.toggle('active', screen.id === screenId)); }
+    recognition.onresult = (event) => {
+        const lastResult = event.results[event.results.length - 1];
+        const command = lastResult[0].transcript.trim().toLowerCase();
+        console.log('Распознано:', command); // Для отладки
         
-        // --- ЛОГИКА КОНСТРУКТОРА ---
-        const agreeAndSetupBtn = document.getElementById('agreeAndSetupBtn');
-        const questionInput = document.getElementById('questionInput');
-        const addQuestionBtn = document.getElementById('addQuestionBtn');
-        const questionListConstructor = document.getElementById('questionListConstructor');
-        const thresholdInput = document.getElementById('thresholdInput');
-        const finalizeSetupBtn = document.getElementById('finalizeSetupBtn');
-
-        function renderConstructorList() {
-            questionListConstructor.innerHTML = '';
-            if (testQuestions.length === 0) { questionListConstructor.innerHTML = `<li style="text-align: center; color: var(--secondary-text);">Здесь появятся ваши вопросы...</li>`; return; }
-            testQuestions.forEach((q, index) => { const li = document.createElement('li'); li.className = 'constructor-item'; li.innerHTML = `<span>${index + 1}. ${q.text} <em class="correct-answer">(Правильный ответ: ${q.correctAnswer})</em></span><button class="remove-question-btn" data-index="${index}">Удалить</button>`; questionListConstructor.appendChild(li); });
+        // Используем includes для более гибкого поиска
+        if (command.includes('да')) {
+            recognitionResultEl.textContent = 'Да';
+        } else if (command.includes('нет')) {
+            recognitionResultEl.textContent = 'Нет';
+        } else {
+            // Можно показывать и другие слова, если нужно
+            recognitionResultEl.textContent = command.charAt(0).toUpperCase() + command.slice(1);
         }
-        function removeQuestion(index) { testQuestions.splice(index, 1); renderConstructorList(); }
-        addQuestionBtn.addEventListener('click', () => { const text = questionInput.value.trim(); const correctAnswer = document.querySelector('input[name="correctAnswer"]:checked').value; if (text) { testQuestions.push({ text: text, type: "yes_no", correctAnswer: correctAnswer }); questionInput.value = ''; renderConstructorList(); } });
-        questionListConstructor.addEventListener('click', (e) => { if (e.target.classList.contains('remove-question-btn')) removeQuestion(parseInt(e.target.dataset.index, 10)); });
-        agreeAndSetupBtn.addEventListener('click', () => showScreen('constructorScreen'));
-        finalizeSetupBtn.addEventListener('click', () => {
-            const threshold = parseInt(thresholdInput.value, 10);
-            if (testQuestions.length === 0) { alert('Пожалуйста, добавьте хотя бы один вопрос.'); return; }
-            if (isNaN(threshold) || threshold < 1 || threshold > testQuestions.length) { alert(`Пожалуйста, введите корректное число для прохождения (от 1 до ${testQuestions.length}).`); return; }
-            passingThreshold = threshold;
-            saveCondition = document.querySelector('input[name="saveCondition"]:checked').value;
-            document.getElementById('checkDeviceBtn').style.display = 'inline-flex';
-            document.getElementById('startBtn').style.display = 'none';
-            document.getElementById('deviceCheckStatus').innerHTML = '';
-            showScreen('startInterviewScreen');
-        });
+    };
 
-        // --- ЛОГИКА ИНТЕРВЬЮ ---
-        const checkDeviceBtn = document.getElementById('checkDeviceBtn');
-        const deviceCheckStatus = document.getElementById('deviceCheckStatus');
-        const startBtn = document.getElementById('startBtn');
-        const restartBtn = document.getElementById('restartBtn');
-        const recognition = SpeechRecognition ? new SpeechRecognition() : null;
-        if(recognition) {
-            recognition.lang = 'ru-RU'; recognition.continuous = false; recognition.interimResults = false;
-        }
-        
-        const recordBtn = document.getElementById('recordBtn'); 
-        const saveBtn = document.getElementById('saveBtn'); 
-        const questionEl = document.getElementById('question'); 
-        const statusEl = document.getElementById('status'); 
-        const resultsList = document.getElementById('resultsList'); 
-        const videoPreview = document.getElementById('videoPreview'); 
-        const resultTitleEl = document.getElementById('resultTitle'); 
-        const resultTextEl = document.getElementById('resultText'); 
-        const historyTableBody = document.getElementById('historyTableBody');
-        let currentQuestionIndex, isListening, mediaRecorder, videoChunks, correctAnswersCount;
-
-        async function checkDevices() {
-            deviceCheckStatus.textContent = "Проверяем...";
-            deviceCheckStatus.className = '';
-            if (!recognition) {
-                deviceCheckStatus.textContent = 'Ошибка: Ваш браузер не поддерживает распознавание речи. Используйте последнюю версию Google Chrome.';
-                deviceCheckStatus.classList.add('status-error');
-                return;
+    recognition.onerror = (event) => {
+        console.error('Ошибка распознавания:', event.error);
+        // Если это не ошибка 'no-speech', которая возникает при молчании
+        if (event.error !== 'no-speech') {
+            statusEl.textContent = 'Ошибка распознавания: ' + event.error;
+            statusEl.className = 'status-warning';
+            // Если произошла серьезная ошибка (например, сеть), переключаемся на запись
+            if (event.error === 'network' || event.error === 'service-not-allowed') {
+                recognition.stop();
+                startFallbackRecording();
             }
+        }
+    };
+
+    // КЛЮЧЕВОЙ МОМЕНТ ДЛЯ ANDROID:
+    // API на мобильных устройствах часто "засыпает" или прекращает работу.
+    // Этот обработчик перезапускает его, пока мы находимся в режиме прослушивания.
+    recognition.onend = () => {
+        if (isListening) {
+            console.log("Распознавание завершилось, перезапускаю...");
+            recognition.start();
+        }
+    };
+} else {
+    supportInfo.innerHTML = `❌ Web Speech API не поддерживается.<br>UA: ${userAgent}<br>Используем fallback запись.`;
+}
+
+async function startMicCheck() {
+    if (isListening) return;
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        window.stream = stream;
+
+        isListening = true; // Устанавливаем флаг сразу после получения доступа
+        checkMicBtn.textContent = 'Остановить проверку';
+        checkMicBtn.classList.add('stop-btn');
+        recognitionResultEl.textContent = '...';
+
+        statusEl.textContent = '✓ Микрофон активен. Говорите!';
+        statusEl.className = 'status-success';
+
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        microphone = audioContext.createMediaStreamSource(stream);
+        microphone.connect(analyser);
+        analyser.fftSize = 256;
+        drawVolume();
+
+        // --- ГЛАВНОЕ ИЗМЕНЕНИЕ ЗДЕСЬ ---
+        // Пытаемся запустить распознавание, если оно поддерживается.
+        // Убрана проверка `!isAndroid`, чтобы разрешить работу на Android.
+        if (recognition) {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                stream.getTracks().forEach(track => track.stop());
-                deviceCheckStatus.textContent = '✓ Камера и микрофон готовы!';
-                deviceCheckStatus.classList.add('status-success');
-                checkDeviceBtn.style.display = 'none';
-                startBtn.style.display = 'inline-flex';
-            } catch (err) {
-                console.error("Device check error:", err);
-                deviceCheckStatus.textContent = 'Ошибка: Не удалось получить доступ к камере или микрофону. Проверьте разрешения в настройках браузера.';
-                deviceCheckStatus.classList.add('status-error');
+                recognition.start();
+            } catch (e) {
+                console.error('Не удалось запустить распознавание, переключаемся на fallback:', e);
+                startFallbackRecording();
             }
+        } else {
+            // Если SpeechRecognition API вообще не поддерживается
+            startFallbackRecording();
         }
 
-        function resetInterviewState() { currentQuestionIndex = -1; isListening = false; mediaRecorder = null; videoChunks = []; correctAnswersCount = 0; finalVideoBlob = null; resultsList.innerHTML = ''; recordBtn.disabled = true; saveBtn.style.display = 'none'; saveBtn.disabled = true; saveBtn.textContent = 'Подождите, идет обработка...'; }
-        
-        async function initializeInterview() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                videoPreview.srcObject = stream;
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-                mediaRecorder.ondataavailable = (event) => { if (event.data.size > 0) videoChunks.push(event.data); };
-                return true;
-            } catch (err) {
-                alert('Ошибка: не удалось получить доступ к камере или микрофону.');
-                showScreen('startInterviewScreen');
-                return false;
-            }
-        }
-        
-        function stopRecordingAndCamera() {
-            return new Promise(resolve => {
-                if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-                    if (videoPreview.srcObject) { videoPreview.srcObject.getTracks().forEach(track => track.stop()); videoPreview.srcObject = null; }
-                    resolve(null);
-                    return;
-                }
-                
-                mediaRecorder.onstop = () => {
-                    const blob = new Blob(videoChunks, { type: 'video/webm' });
-                    if (videoPreview.srcObject) { videoPreview.srcObject.getTracks().forEach(track => track.stop()); videoPreview.srcObject = null; }
-                    resolve(blob);
-                };
-                
-                if (mediaRecorder.state === 'paused') {
-                    mediaRecorder.stop();
-                } else {
-                    setTimeout(() => mediaRecorder.stop(), 300);
-                }
-            });
-        }
-        
-        function evaluateAnswer(transcript, question) { const text = transcript.toLowerCase(); let spokenAnswer = null; if (text.includes('да')) spokenAnswer = 'да'; else if (text.includes('нет')) spokenAnswer = 'нет'; if (spokenAnswer && spokenAnswer === question.correctAnswer) { return { text: `Оценка: 'Правильно' (ответ "${spokenAnswer}")`, class: "evaluation-correct" }; } else { return { text: `Оценка: 'Неправильно' (ответ "${spokenAnswer || 'нечеткий'}")`, class: "evaluation-incorrect" }; } }
-        
-        recognition.onstart = () => { isListening = true; recordBtn.classList.add('recording'); statusEl.textContent = 'Говорите...'; };
-        recognition.onend = () => { 
-            isListening = false; 
-            recordBtn.classList.remove('recording'); 
-            if (mediaRecorder && mediaRecorder.state === 'paused') {
-                mediaRecorder.resume();
-            }
-        };
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            const evaluation = evaluateAnswer(transcript, testQuestions[currentQuestionIndex]);
-            if (evaluation.class === 'evaluation-correct') correctAnswersCount++;
-            displayResult(transcript, evaluation);
-            recordBtn.disabled = true;
-            statusEl.textContent = 'Ответ распознан. Переход к следующему вопросу...';
-            setTimeout(() => {
-                if (currentQuestionIndex === testQuestions.length - 1) {
-                    finishInterview();
-                } else {
-                    displayNextQuestion();
-                }
-            }, 1500);
-        };
-        
-        function displayNextQuestion() { currentQuestionIndex++; if (currentQuestionIndex < testQuestions.length) { questionEl.textContent = testQuestions[currentQuestionIndex].text; recordBtn.disabled = false; statusEl.textContent = "Нажмите 'Записать ответ'"; } else { finishInterview(); } }
-        
-        async function finishInterview() {
-            const passed = correctAnswersCount >= passingThreshold;
-            resultTitleEl.textContent = passed ? "Поздравляем, скрининг пройден!" : "К сожалению, скрининг не пройден.";
-            resultTextEl.textContent = `Вы набрали ${correctAnswersCount} из ${testQuestions.length} правильных ответов.`;
-            const shouldShowSaveButton = passed || saveCondition === 'all';
-            if (shouldShowSaveButton) {
-                saveBtn.style.display = 'inline-flex';
-                saveBtn.disabled = true;
-                saveBtn.textContent = 'Подождите, идет обработка...';
-            }
-            showScreen('resultsScreen');
-            const blob = await stopRecordingAndCamera();
-            finalVideoBlob = blob;
-            if (shouldShowSaveButton) {
-                if (finalVideoBlob && finalVideoBlob.size > 0) {
-                    saveBtn.disabled = false;
-                    saveBtn.textContent = 'Сохранить запись';
-                } else {
-                    saveBtn.textContent = 'Ошибка записи';
-                }
-            } else {
-                finalVideoBlob = null;
-                videoChunks = [];
-            }
-            saveHistory({ date: new Date(), outcome: passed ? "Пройден" : "Не пройден", score: `${correctAnswersCount} / ${testQuestions.length}` });
-        }
-        
-        function displayResult(transcript, evaluation) { const li = document.createElement('li'); li.classList.add('result-item'); li.innerHTML = `<p><strong>Вопрос:</strong> ${testQuestions[currentQuestionIndex].text}</p><p><strong>Распознанный ответ:</strong> ${transcript}</p><p><span class="${evaluation.class}">${evaluation.text}</span></p>`; resultsList.appendChild(li); }
-        
-        function saveHistory(result) { interviewHistory.unshift(result); renderHistoryTable(); }
-        function renderHistoryTable() {
-            historyTableBody.innerHTML = '';
-            if (interviewHistory.length === 0) { historyTableBody.innerHTML = `<tr><td colspan="3" style="text-align: center;">История пока пуста.</td></tr>`; return; }
-            interviewHistory.forEach(item => { const date = new Date(item.date); const formattedDate = date.toLocaleString('ru-RU'); const row = `<tr><td>${formattedDate}</td><td class="${item.outcome === 'Пройден' ? 'evaluation-correct' : 'evaluation-incorrect'}">${item.outcome}</td><td>${item.score}</td></tr>`; historyTableBody.innerHTML += row; });
-        }
-        
-        checkDeviceBtn.addEventListener('click', checkDevices);
+    } catch (err) {
+        console.error("Ошибка доступа к микрофону:", err);
+        statusEl.textContent = 'Ошибка доступа к микрофону: ' + err.message;
+        statusEl.className = 'status-error';
+    }
+}
 
-        startBtn.addEventListener('click', async () => {
-            resetInterviewState();
-            const ready = await initializeInterview();
-            if (ready) { showScreen('interviewScreen'); mediaRecorder.start(); displayNextQuestion(); }
-        });
-        
-        restartBtn.addEventListener('click', () => {
-            testQuestions = []; renderConstructorList(); thresholdInput.value = 1; interviewHistory = []; renderHistoryTable();
-            document.querySelector('input[name="saveCondition"][value="successful"]').checked = true;
-            showScreen('instructionsScreen');
-        });
+function startFallbackRecording() {
+    statusEl.textContent = 'Распознавание недоступно. Включена запись (fallback).';
+    statusEl.className = 'status-warning';
 
-        recordBtn.addEventListener('click', () => { 
-            if (!isListening) { 
-                if (mediaRecorder && mediaRecorder.state === 'recording') {
-                    mediaRecorder.pause();
-                }
-                recognition.start(); 
-            } 
-        });
-        
-        saveBtn.addEventListener('click', () => {
-            if (!finalVideoBlob) { alert('Видеофайл еще не готов или запись не удалась.'); return; }
-            const url = URL.createObjectURL(finalVideoBlob); const a = document.createElement('a'); a.style = 'display: none'; a.href = url; const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-"); a.download = `interview_recording_${timestamp}.webm`; a.click(); window.URL.revokeObjectURL(url); a.remove(); saveBtn.disabled = true; saveBtn.textContent = 'Сохранено';
-        });
+    // Убедимся, что поток существует
+    if (!window.stream) {
+        console.error("Невозможно начать запись: аудиопоток отсутствует.");
+        statusEl.textContent = "Ошибка: аудиопоток не найден для записи.";
+        statusEl.className = "status-error";
+        return;
+    }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            showScreen('instructionsScreen');
-            renderHistoryTable();
-        });
-    </script>
+    mediaRecorder = new MediaRecorder(window.stream);
+    audioChunks = [];
+    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+    mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        downloadLink.href = audioUrl;
+        downloadLink.download = 'record.wav';
+        downloadLink.style.display = 'block';
+    };
+    mediaRecorder.start();
+}
+
+function stopMicCheck() {
+    if (!isListening) return;
+    isListening = false; // Сбрасываем флаг в самом начале
+
+    // Это предотвратит автоматический перезапуск в обработчике onend
+    if (recognition) {
+        recognition.stop();
+    }
+    
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+    }
+
+    if (window.stream) {
+        window.stream.getTracks().forEach(track => track.stop());
+        window.stream = null;
+    }
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+    }
+
+    statusEl.textContent = 'Ожидание проверки...';
+    statusEl.className = '';
+    volumeLevelEl.style.width = '0%';
+    checkMicBtn.textContent = 'Проверить микрофон';
+    checkMicBtn.classList.remove('stop-btn');
+    recognitionResultEl.textContent = '';
+    downloadLink.style.display = 'none'; // Прячем ссылку на скачивание
+}
+
+function drawVolume() {
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const update = () => {
+        if (!isListening) return; // Прекращаем отрисовку, если остановили
+        analyser.getByteFrequencyData(dataArray);
+        let sum = dataArray.reduce((a, b) => a + b, 0);
+        const average = sum / dataArray.length;
+        const volumePercent = Math.min(100, average * 1.5);
+        volumeLevelEl.style.width = volumePercent + '%';
+        animationFrameId = requestAnimationFrame(update);
+    };
+    update();
+}
+
+checkMicBtn.addEventListener('click', () => {
+    if (isListening) {
+        stopMicCheck();
+    } else {
+        startMicCheck();
+    }
+});
+</script>
 </body>
 </html>
